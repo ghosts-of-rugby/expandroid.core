@@ -1,0 +1,4 @@
+float64 hand_command
+float64 x_command
+float64 y_command
+float64 z_command
