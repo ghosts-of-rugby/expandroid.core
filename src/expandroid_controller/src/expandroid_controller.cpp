@@ -3,6 +3,8 @@
 #include <chrono>
 #include <functional>
 
+#include "expandroid_controller/expandroid_trajectory.hpp"
+
 using namespace std::chrono_literals;
 
 ExpandroidControlNode::ExpandroidControlNode()
@@ -22,10 +24,7 @@ ExpandroidControlNode::ExpandroidControlNode()
           "expandroid_speed_command", 1,
           [this](expandroid_msgs::msg::ExpandroidCommand::UniquePtr msg) {
             control_mode_ = ControlMode::SPEED_CTRL;
-            expandroid_speed_command_.hand_command = msg->hand_command;
-            expandroid_speed_command_.x_command = msg->x_command;
-            expandroid_speed_command_.y_command = msg->y_command;
-            expandroid_speed_command_.z_command = msg->z_command;
+            expandroid_speed_command_ = *msg;
           });
 
   trajectory_tracking_action_server_ =
@@ -36,7 +35,7 @@ ExpandroidControlNode::ExpandroidControlNode()
           std::bind(&ExpandroidControlNode::handle_accepted, this, _1));
 
   default_updater_ = this->create_wall_timer(
-      100ms, std::bind(&ExpandroidControlNode::default_update, this));
+      1ms, std::bind(&ExpandroidControlNode::default_update, this));
 }
 
 void ExpandroidControlNode::init() {
@@ -76,24 +75,10 @@ void ExpandroidControlNode::default_update() {
   // send command
   switch (control_mode_) {
     case ControlMode::SPEED_CTRL: {
-      json command_json = json::array();
-      command_json.push_back({
-          {"id", 1},
-          {"name", "ref_spd"},
-          {"value", static_cast<int>(
-                        expandroid_speed_command_.hand_command *
-                        expandroid_parameter_.hand_motor_speed_per_user_speed)},
-      });
-      command_json.push_back({
-          {"id", 2},
-          {"name", "ref_spd"},
-          {"value", static_cast<int>(
-                        expandroid_speed_command_.x_command *
-                        expandroid_parameter_.x_motor_speed_per_user_speed)},
-      });
-      std::string command_string = command_json.dump();
-      socket_->send_to(boost::asio::buffer(command_string),
-                       motor_controller_endpoint_);
+      send_speed_command(expandroid_speed_command_.hand_command,
+                         expandroid_speed_command_.x_command,
+                         expandroid_speed_command_.y_command,
+                         expandroid_speed_command_.z_command);
       break;
     }
     case ControlMode::TRAJECTORY_TRACKING: {
@@ -123,23 +108,30 @@ void ExpandroidControlNode::handle_accepted(
   using namespace std::placeholders;
   // this needs to return quickly to avoid blocking the executor, so spin up a
   // new thread
-  std::thread{std::bind(&ExpandroidControlNode::execute, this, _1), goal_handle}
+  std::thread{
+      std::bind(&ExpandroidControlNode::execute_trajectory_tracking, this, _1),
+      goal_handle}
       .detach();
 }
 
-void ExpandroidControlNode::execute(
+void ExpandroidControlNode::execute_trajectory_tracking(
     const std::shared_ptr<GoalHandleTrajectoryTracking> goal_handle) {
   RCLCPP_INFO(this->get_logger(), "Executing goal");
   control_mode_ = ControlMode::TRAJECTORY_TRACKING;
-  rclcpp::Rate loop_rate(100ms);
+  rclcpp::Rate loop_rate(20ms);
+  loop_rate.period();
   const auto goal = goal_handle->get_goal();
 
-  auto feedback = std::make_shared<TrajectoryTracking::Feedback>();
+  MotorPlanner trajectory(expandroid_state_, goal->reference_angle, 0.2,
+                              0.3, 0.3, 0.1);
 
-  for (auto i = 1u; i <= 100; ++i) {
-    auto result = std::make_shared<TrajectoryTracking::Result>();
-    result->goal_state = expandroid_state_;
+  auto duration = trajectory.get_duration();
+  RCLCPP_INFO(this->get_logger(), "Duration: %f[s]", duration.count() / 1e9);
 
+  // auto feedback = std::make_shared<TrajectoryTracking::Feedback>();
+  auto result = std::make_shared<TrajectoryTracking::Result>();
+
+  for (auto t = 0ns; t < duration; t += loop_rate.period()) {
     if (goal_handle->is_canceling()) {
       result->goal_state = expandroid_state_;
       goal_handle->canceled(result);
@@ -147,16 +139,23 @@ void ExpandroidControlNode::execute(
       return;
     }
     // Infomate
-    RCLCPP_INFO(this->get_logger(), "Executing goal");
+    RCLCPP_INFO(this->get_logger(), "Executing goal : Ref Hand Angle: %f",
+                trajectory.calc_angle<MotorType::X>(t));
 
-    // feedback->progress = i;
-    goal_handle->publish_feedback(feedback);
+    send_state_command(trajectory.calc_angle<MotorType::HAND>(t),
+                       trajectory.calc_speed<MotorType::HAND>(t),  //
+                       trajectory.calc_angle<MotorType::X>(t),
+                       trajectory.calc_speed<MotorType::X>(t),  //
+                       trajectory.calc_angle<MotorType::Y>(t),
+                       trajectory.calc_speed<MotorType::Y>(t),  //
+                       trajectory.calc_angle<MotorType::Z>(t),
+                       trajectory.calc_speed<MotorType::Z>(t)  //
+    );
 
     loop_rate.sleep();
   }
 
   if (rclcpp::ok()) {
-    auto result = std::make_shared<TrajectoryTracking::Result>();
     result->goal_state = expandroid_state_;
     goal_handle->succeed(result);
     RCLCPP_INFO(this->get_logger(), "Goal succeeded");
@@ -195,3 +194,66 @@ ExpandroidControlNode::get_expandroid_state() {
   return msg;
 }
 
+void ExpandroidControlNode::send_speed_command(const double& hand_speed,
+                                               const double& x_speed,
+                                               const double& y_speed,
+                                               const double& z_speed) {
+  std::lock_guard<std::mutex> lock(socket_mutex_);
+
+  json command_json = json::array();
+  command_json.push_back({
+      {"id", 1},
+      {"name", "ref_spd"},
+      {"value",
+       static_cast<int>(hand_speed *
+                        expandroid_parameter_.hand_motor_speed_per_user_speed)},
+  });
+  command_json.push_back({
+      {"id", 2},
+      {"name", "ref_spd"},
+      {"value",
+       static_cast<int>(x_speed *
+                        expandroid_parameter_.x_motor_speed_per_user_speed)},
+  });
+  std::string command_string = command_json.dump();
+  socket_->send_to(boost::asio::buffer(command_string),
+                   motor_controller_endpoint_);
+}
+
+void ExpandroidControlNode::send_state_command(const double& hand_angle,
+                                               const double& hand_speed,  //
+                                               const double& x_angle,
+                                               const double& x_speed,  //
+                                               const double& y_angle,
+                                               const double& y_speed,  //
+                                               const double& z_angle,
+                                               const double& z_speed) {
+  std::lock_guard<std::mutex> lock(socket_mutex_);
+
+  json command_json = json::array();
+  command_json.push_back({
+      {"id", 1},
+      {"name", "ref_state"},
+      {"value",
+       {
+           static_cast<int>(hand_angle * expandroid_parameter_
+                                             .hand_motor_angle_per_user_angle),
+           static_cast<int>(hand_speed * expandroid_parameter_
+                                             .hand_motor_speed_per_user_speed),
+       }},
+  });
+  command_json.push_back({
+      {"id", 2},
+      {"name", "ref_state"},
+      {"value",
+       {
+           static_cast<int>(x_angle *
+                            expandroid_parameter_.x_motor_angle_per_user_angle),
+           static_cast<int>(x_speed *
+                            expandroid_parameter_.x_motor_speed_per_user_speed),
+       }},
+  });
+  std::string command_string = command_json.dump();
+  socket_->send_to(boost::asio::buffer(command_string),
+                   motor_controller_endpoint_);
+}

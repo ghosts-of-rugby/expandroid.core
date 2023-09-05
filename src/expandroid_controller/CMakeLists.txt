@@ -24,6 +24,8 @@ set(THIS_PACKAGE_INCLUDE_DEPENDS
 
 add_library(expandroid_control_lib SHARED
   src/expandroid_controller.cpp
+  src/expandroid_trajectory.cpp
+  src/expandroid_common.cpp
 )
 
 add_executable(expandroid_control_node src/expandroid_control_node.cpp)

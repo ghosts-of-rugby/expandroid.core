@@ -64,9 +64,9 @@ class ExpandroidMainNode(rclpy.node.Node):
             self._command_mode = CommandMode.SPEED_CTRL
 
             if msg.buttons[4]:
-                self._speed_command.hand_command = 0.3
+                self._speed_command.hand_command = 0.1
             elif msg.buttons[5]:
-                self._speed_command.hand_command = -0.3
+                self._speed_command.hand_command = -0.1
             else:
                 self._speed_command.hand_command = 0.0
             self._speed_command.x_command = msg.axes[0] * 0.3

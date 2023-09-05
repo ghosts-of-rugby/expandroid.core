@@ -15,13 +15,6 @@
 using boost::asio::ip::udp;
 using json = nlohmann::json;
 
-struct ExpandroidInternalCommand {
-  double hand_command;
-  double x_command;
-  double y_command;
-  double z_command;
-};
-
 struct ExpandroidParameter {
   const double c610_current_value_per_ampere = 1000.0;
   const double c620_current_value_per_ampere = 16384.0 / 20.0;
@@ -59,9 +52,18 @@ class ExpandroidControlNode : public rclcpp::Node {
   void handle_accepted(
       const std::shared_ptr<GoalHandleTrajectoryTracking> goal_handle);
 
-  void execute(const std::shared_ptr<GoalHandleTrajectoryTracking> goal_handle);
+  void execute_trajectory_tracking(
+      const std::shared_ptr<GoalHandleTrajectoryTracking> goal_handle);
 
   expandroid_msgs::msg::ExpandroidState get_expandroid_state();
+
+  void send_speed_command(const double& hand_speed, const double& x_speed,
+                          const double& y_speed, const double& z_speed);
+
+  void send_state_command(const double& hand_angle, const double& hand_speed,
+                          const double& x_angle, const double& x_speed,
+                          const double& y_angle, const double& y_speed,
+                          const double& z_angle, const double& z_speed);
 
   rclcpp::TimerBase::SharedPtr default_updater_;
 
@@ -86,8 +88,7 @@ class ExpandroidControlNode : public rclcpp::Node {
   // Expandroid Parameter
   ExpandroidParameter expandroid_parameter_;
 
-  ExpandroidInternalCommand expandroid_speed_command_;
-  ExpandroidInternalCommand expandroid_angle_command_;
+  expandroid_msgs::msg::ExpandroidCommand expandroid_speed_command_;
   expandroid_msgs::msg::ExpandroidState expandroid_state_;
   ControlMode control_mode_;
 };
