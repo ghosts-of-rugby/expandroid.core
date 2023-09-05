@@ -10,12 +10,12 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(nlohmann_json 3.2.0 REQUIRED)
-find_package(expandroid_msg REQUIRED)
+find_package(expandroid_msgs REQUIRED)
 
 set(THIS_PACKAGE_INCLUDE_DEPENDS
   rclcpp
   std_msgs
-  expandroid_msg
+  expandroid_msgs
 )
 
 add_executable(expandroid_control_node src/expandroid_control_node.cpp)

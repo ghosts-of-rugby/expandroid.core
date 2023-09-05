@@ -1,7 +1,7 @@
 import rclpy
 import rclpy.node
 from sensor_msgs.msg import Joy
-from expandroid_msg.msg import ExpandroidCommand
+from expandroid_msgs.msg import ExpandroidCommand
 from enum import Enum
 
 

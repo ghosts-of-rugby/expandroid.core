@@ -6,12 +6,12 @@ tasks:
   build:
     cmds:
       - rosdep install --from-paths src --ignore-src -r -y
-      - colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Debug --parallel-workers 10 -Wno-dev
+      - colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Debug --parallel-workers 10
 
   build_msg:
     cmds:
       - rosdep install --from-paths src --ignore-src -r -y
-      - colcon build --symlink-install --packages-select expandroid_msg -Wno-dev
+      - colcon build --symlink-install --packages-select expandroid_msgs
 
   clean:
     cmds:

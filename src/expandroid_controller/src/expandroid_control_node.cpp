@@ -2,13 +2,13 @@
 #include <cstdio>
 #include <map>
 
-#include "expandroid_msg/msg/expandroid_command.hpp"
-#include "expandroid_msg/msg/expandroid_state.hpp"
+#include "expandroid_msgs/msg/expandroid_command.hpp"
+#include "expandroid_msgs/msg/expandroid_state.hpp"
 #include "nlohmann/json.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/float32.hpp"
 #include "std_msgs/msg/string.hpp"
-// #include "expandroid_msgs/msg/
+// #include "expandroid_msgss/msg/
 
 using boost::asio::ip::udp;
 using json = nlohmann::json;
@@ -28,13 +28,13 @@ class ExpandroidControlNode : public rclcpp::Node {
     init();
     control_mode_ = ControlMode::SPEED;
     expandroid_state_publisher_ =
-        this->create_publisher<expandroid_msg::msg::ExpandroidState>(
+        this->create_publisher<expandroid_msgs::msg::ExpandroidState>(
             "expandroid_state", 1);
     // add ExpandroidCommand subscriber
     expandroid_speed_command_subscriber_ =
-        this->create_subscription<expandroid_msg::msg::ExpandroidCommand>(
+        this->create_subscription<expandroid_msgs::msg::ExpandroidCommand>(
             "expandroid_speed_command", 1,
-            [this](expandroid_msg::msg::ExpandroidCommand::UniquePtr msg) {
+            [this](expandroid_msgs::msg::ExpandroidCommand::UniquePtr msg) {
               control_mode_ = ControlMode::SPEED;
               expandroid_speed_command_.hand_command = msg->hand_command;
               expandroid_speed_command_.x_command = msg->x_command;
@@ -42,9 +42,9 @@ class ExpandroidControlNode : public rclcpp::Node {
               expandroid_speed_command_.z_command = msg->z_command;
             });
     expandroid_angle_command_subscriber_ =
-        this->create_subscription<expandroid_msg::msg::ExpandroidCommand>(
+        this->create_subscription<expandroid_msgs::msg::ExpandroidCommand>(
             "expandroid_angle_command", 1,
-            [this](expandroid_msg::msg::ExpandroidCommand::UniquePtr msg) {
+            [this](expandroid_msgs::msg::ExpandroidCommand::UniquePtr msg) {
               control_mode_ = ControlMode::ANGLE;
               expandroid_angle_command_.hand_command = msg->hand_command;
               expandroid_angle_command_.x_command = msg->x_command;
@@ -94,7 +94,7 @@ class ExpandroidControlNode : public rclcpp::Node {
     // parse message
     json message_json = json::parse(message);
 
-    auto msg = expandroid_msg::msg::ExpandroidState();
+    auto msg = expandroid_msgs::msg::ExpandroidState();
 
     const double c610_current_value_per_ampere = 1000.0;
     const double c620_current_value_per_ampere = 16384.0 / 20.0;
@@ -168,12 +168,12 @@ class ExpandroidControlNode : public rclcpp::Node {
 
   rclcpp::TimerBase::SharedPtr timer_;
   // add ExpandroidState publisher
-  rclcpp::Publisher<expandroid_msg::msg::ExpandroidState>::SharedPtr
+  rclcpp::Publisher<expandroid_msgs::msg::ExpandroidState>::SharedPtr
       expandroid_state_publisher_;
   // add ExpandroidCommand subscriber
-  rclcpp::Subscription<expandroid_msg::msg::ExpandroidCommand>::SharedPtr
+  rclcpp::Subscription<expandroid_msgs::msg::ExpandroidCommand>::SharedPtr
       expandroid_speed_command_subscriber_;
-  rclcpp::Subscription<expandroid_msg::msg::ExpandroidCommand>::SharedPtr
+  rclcpp::Subscription<expandroid_msgs::msg::ExpandroidCommand>::SharedPtr
       expandroid_angle_command_subscriber_;
 
   boost::asio::io_context io_context_;
