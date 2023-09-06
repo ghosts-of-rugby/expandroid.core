@@ -75,10 +75,7 @@ void ExpandroidControlNode::default_update() {
   // send command
   switch (control_mode_) {
     case ControlMode::SPEED_CTRL: {
-      send_speed_command(expandroid_speed_command_.hand_command,
-                         expandroid_speed_command_.x_command,
-                         expandroid_speed_command_.y_command,
-                         expandroid_speed_command_.z_command);
+      send_speed_command(expandroid_speed_command_);
       break;
     }
     case ControlMode::TRAJECTORY_TRACKING: {
@@ -117,15 +114,30 @@ void ExpandroidControlNode::handle_accepted(
 void ExpandroidControlNode::execute_trajectory_tracking(
     const std::shared_ptr<GoalHandleTrajectoryTracking> goal_handle) {
   RCLCPP_INFO(this->get_logger(), "Executing goal");
+
+  // Set control mode
   control_mode_ = ControlMode::TRAJECTORY_TRACKING;
+
   rclcpp::Rate loop_rate(20ms);
-  loop_rate.period();
+
   const auto goal = goal_handle->get_goal();
 
-  MotorPlanner trajectory(expandroid_state_, goal->reference_angle, 0.2,
-                              0.3, 0.3, 0.1);
+  // Create trajectory
+  auto [hand_angle, x_angle, y_angle, z_angle] = get_angles(expandroid_state_);
+  auto [hand_ref_angle, x_ref_angle, y_ref_angle, z_ref_angle] =
+      get_commands(goal->reference_angle);
+
+  ConstantSpeedTrajectory hand_trajectory(hand_angle, hand_ref_angle, 0.2);
+  // ConstantSpeedTrajectory x_trajectory(x_angle, x_ref_angle, 0.3);
+  TrapzSpeedTrajectory x_trajectory(x_angle, x_ref_angle, 0.5, 0.3);
+  ConstantSpeedTrajectory y_trajectory(y_angle, y_ref_angle, 0.3);
+  ConstantSpeedTrajectory z_trajectory(z_angle, z_ref_angle, 0.1);
+
+  TotalTrajectory trajectory(&hand_trajectory, &x_trajectory, &y_trajectory,
+                             &z_trajectory);
 
   auto duration = trajectory.get_duration();
+
   RCLCPP_INFO(this->get_logger(), "Duration: %f[s]", duration.count() / 1e9);
 
   // auto feedback = std::make_shared<TrajectoryTracking::Feedback>();
@@ -138,19 +150,8 @@ void ExpandroidControlNode::execute_trajectory_tracking(
       RCLCPP_INFO(this->get_logger(), "Goal canceled");
       return;
     }
-    // Infomate
-    RCLCPP_INFO(this->get_logger(), "Executing goal : Ref Hand Angle: %f",
-                trajectory.calc_angle<MotorType::X>(t));
 
-    send_state_command(trajectory.calc_angle<MotorType::HAND>(t),
-                       trajectory.calc_speed<MotorType::HAND>(t),  //
-                       trajectory.calc_angle<MotorType::X>(t),
-                       trajectory.calc_speed<MotorType::X>(t),  //
-                       trajectory.calc_angle<MotorType::Y>(t),
-                       trajectory.calc_speed<MotorType::Y>(t),  //
-                       trajectory.calc_angle<MotorType::Z>(t),
-                       trajectory.calc_speed<MotorType::Z>(t)  //
-    );
+    send_state_command(trajectory.calc_command_state(t));
 
     loop_rate.sleep();
   }
@@ -194,11 +195,11 @@ ExpandroidControlNode::get_expandroid_state() {
   return msg;
 }
 
-void ExpandroidControlNode::send_speed_command(const double& hand_speed,
-                                               const double& x_speed,
-                                               const double& y_speed,
-                                               const double& z_speed) {
+void ExpandroidControlNode::send_speed_command(
+    const expandroid_msgs::msg::ExpandroidCommand& command) {
   std::lock_guard<std::mutex> lock(socket_mutex_);
+
+  auto [hand_speed, x_speed, y_speed, z_speed] = get_commands(command);
 
   json command_json = json::array();
   command_json.push_back({
@@ -220,15 +221,12 @@ void ExpandroidControlNode::send_speed_command(const double& hand_speed,
                    motor_controller_endpoint_);
 }
 
-void ExpandroidControlNode::send_state_command(const double& hand_angle,
-                                               const double& hand_speed,  //
-                                               const double& x_angle,
-                                               const double& x_speed,  //
-                                               const double& y_angle,
-                                               const double& y_speed,  //
-                                               const double& z_angle,
-                                               const double& z_speed) {
+void ExpandroidControlNode::send_state_command(
+    const expandroid_msgs::msg::ExpandroidState& state) {
   std::lock_guard<std::mutex> lock(socket_mutex_);
+
+  auto [hand_angle, x_angle, y_angle, z_angle] = get_angles(state);
+  auto [hand_speed, x_speed, y_speed, z_speed] = get_speeds(state);
 
   json command_json = json::array();
   command_json.push_back({

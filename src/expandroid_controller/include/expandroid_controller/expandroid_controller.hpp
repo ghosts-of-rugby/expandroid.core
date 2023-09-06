@@ -57,13 +57,10 @@ class ExpandroidControlNode : public rclcpp::Node {
 
   expandroid_msgs::msg::ExpandroidState get_expandroid_state();
 
-  void send_speed_command(const double& hand_speed, const double& x_speed,
-                          const double& y_speed, const double& z_speed);
+  void send_speed_command(
+      const expandroid_msgs::msg::ExpandroidCommand& command);
 
-  void send_state_command(const double& hand_angle, const double& hand_speed,
-                          const double& x_angle, const double& x_speed,
-                          const double& y_angle, const double& y_speed,
-                          const double& z_angle, const double& z_speed);
+  void send_state_command(const expandroid_msgs::msg::ExpandroidState& state);
 
   rclcpp::TimerBase::SharedPtr default_updater_;
 

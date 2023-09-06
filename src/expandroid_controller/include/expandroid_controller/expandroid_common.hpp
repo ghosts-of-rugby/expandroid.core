@@ -5,11 +5,9 @@
 
 enum class MotorType { HAND, X, Y, Z };
 
-template <MotorType motor_type>
-double get_angle(const expandroid_msgs::msg::ExpandroidState);
+std::array<double, 4> get_angles(const expandroid_msgs::msg::ExpandroidState);
 
-template <MotorType motor_type>
-double get_speed(const expandroid_msgs::msg::ExpandroidState);
+std::array<double, 4> get_speeds(const expandroid_msgs::msg::ExpandroidState);
 
-template <MotorType motor_type>
-double get_command(const expandroid_msgs::msg::ExpandroidCommand);
+std::array<double, 4> get_commands(
+    const expandroid_msgs::msg::ExpandroidCommand);
