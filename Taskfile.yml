@@ -16,3 +16,11 @@ tasks:
   clean:
     cmds:
       - rm -rf build install log
+
+  launch_controller:
+    cmds:
+      - ros2 launch expandroid_controller expandroid_control_node.launch.py
+  
+  launch_commander:
+    cmds:
+      - ros2 launch expandroid_commander expandroid_commander.launch.py

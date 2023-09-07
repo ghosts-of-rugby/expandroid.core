@@ -2,8 +2,7 @@ from setuptools import find_packages, setup
 import os
 from glob import glob
 
-
-package_name = "expandroid_main"
+package_name = "expandroid_commander"
 
 setup(
     name=package_name,
@@ -25,6 +24,9 @@ setup(
     license="TODO: License declaration",
     tests_require=["pytest"],
     entry_points={
-        "console_scripts": ["expandroid_main = expandroid_main.expandroid_main:main"],
+        "console_scripts": [
+            "expandroid_commander = expandroid_commander.expandroid_commander:main",
+            "extend_joystick = expandroid_commander.extend_joystick:main",
+        ],
     },
 )

@@ -1,5 +1,4 @@
-expandroid_msgs/ExpandroidCommand order
+expandroid_msgs/ExpandroidCommand reference_angle
 ---
-int32[] sequence
+expandroid_msgs/ExpandroidState goal_state
 ---
-int32[] partial_sequence
