@@ -18,9 +18,9 @@ class CommandMode(Enum):
 
 class ExpandroidMainNode(rclpy.node.Node):
     def __init__(self):
-        super().__init__("expandroid_main")
+        super().__init__("expandroid_commander")
         # subscribe joystick
-        self.create_subscription(Joy, "joy", self.joy_callback, 10)
+        self.create_subscription(Joy, "extended_joy", self.joy_callback, 10)
         # publish command
         self._speed_command = ExpandroidCommand()
         self.speed_command_publisher = self.create_publisher(
@@ -46,12 +46,42 @@ class ExpandroidMainNode(rclpy.node.Node):
         elif self._command_mode == CommandMode.SPEED_CTRL:
             self.get_logger().info("Speed control mode")
 
-            if msg.buttons[0]:  # A button
+            if msg.buttons[11]:  # 1 button
                 self._command_mode = CommandMode.TRAJECTORY_TRACKING
                 self.get_logger().info("Start trajectory tracking")
                 goal_msg = TrajectoryTracking.Goal()
                 goal_msg.reference_angle.hand_command = 0.0
                 goal_msg.reference_angle.x_command = 0.0
+                self._trajectory_tracking_action_client.wait_for_server()
+                future = self._trajectory_tracking_action_client.send_goal_async(
+                    goal_msg
+                )
+                future.add_done_callback(self.trajectory_tracing_goal_response_callback)
+
+                self.get_logger().info("Goal sent")
+                return
+
+            elif msg.buttons[12]:  # 1 button
+                self._command_mode = CommandMode.TRAJECTORY_TRACKING
+                self.get_logger().info("Start trajectory tracking")
+                goal_msg = TrajectoryTracking.Goal()
+                goal_msg.reference_angle.hand_command = 0.0
+                goal_msg.reference_angle.x_command = 0.3
+                self._trajectory_tracking_action_client.wait_for_server()
+                future = self._trajectory_tracking_action_client.send_goal_async(
+                    goal_msg
+                )
+                future.add_done_callback(self.trajectory_tracing_goal_response_callback)
+
+                self.get_logger().info("Goal sent")
+                return
+
+            elif msg.buttons[13]:  # 1 button
+                self._command_mode = CommandMode.TRAJECTORY_TRACKING
+                self.get_logger().info("Start trajectory tracking")
+                goal_msg = TrajectoryTracking.Goal()
+                goal_msg.reference_angle.hand_command = 0.0
+                goal_msg.reference_angle.x_command = -0.3
                 self._trajectory_tracking_action_client.wait_for_server()
                 future = self._trajectory_tracking_action_client.send_goal_async(
                     goal_msg
@@ -81,9 +111,7 @@ class ExpandroidMainNode(rclpy.node.Node):
 
         get_result_future: Future = self._goal_handle.get_result_async()
 
-        get_result_future.add_done_callback(
-            self.trajectory_tracing_get_result_callback
-        )
+        get_result_future.add_done_callback(self.trajectory_tracing_get_result_callback)
 
     def trajectory_tracing_get_result_callback(self, future):
         # result = future.result().result
