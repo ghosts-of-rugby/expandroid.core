@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Eigen/Dense>
 #include <chrono>
 
 #include "expandroid_controller/expandroid_common.hpp"
@@ -34,6 +35,13 @@ class TotalTrajectory {
 
 class ConstantSpeedTrajectory : public Trajectory {
  public:
+  /**
+   * @brief Construct a new Constant Speed Trajectory object
+   *
+   * @param start_pos start position
+   * @param goal_pos goal position
+   * @param abs_speed absolute speed
+   */
   ConstantSpeedTrajectory(const double start_pos, const double goal_pos,
                           const double abs_speed);
 
@@ -70,4 +78,23 @@ class TrapzSpeedTrajectory : public Trajectory {
   double abs_speed_;
   double constant_speed_time_rate_;
   std::chrono::nanoseconds duration_;
+};
+
+class CubicTrajectory : public Trajectory {
+ public:
+  CubicTrajectory(const double start_pos, const double goal_pos,
+                  const double speed_max, const double acceleration_max);
+
+  double calc_angle(const std::chrono::nanoseconds& time) const override;
+  double calc_speed(const std::chrono::nanoseconds& time) const override;
+  std::chrono::nanoseconds get_duration() const override;
+
+ private:
+  double start_pos_;
+  double goal_pos_;
+  double speed_max_;
+  double acceleration_max_;
+  std::chrono::nanoseconds duration_;
+
+  Eigen::Vector4d coefficients_;
 };

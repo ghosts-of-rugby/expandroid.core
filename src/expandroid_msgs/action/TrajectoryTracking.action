@@ -1,4 +1,4 @@
-expandroid_msgs/ExpandroidCommand reference_angle
+expandroid_msgs/ExpandroidCommand[] reference_angles
 ---
 expandroid_msgs/ExpandroidState goal_state
 ---

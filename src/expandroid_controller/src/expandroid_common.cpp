@@ -15,3 +15,15 @@ std::array<double, 4> get_commands(
   return {command.hand_command, command.x_command, command.y_command,
           command.z_command};
 }
+
+std::vector<std::array<double, 4>> get_commands(
+    const std::vector<expandroid_msgs::msg::ExpandroidCommand> commands) {
+  std::vector<std::array<double, 4>> commands_arr;
+
+  for (auto& command : commands) {
+    commands_arr.emplace_back(std::array{command.hand_command,
+                                         command.x_command, command.y_command,
+                                         command.z_command});
+  }
+  return commands_arr;
+}

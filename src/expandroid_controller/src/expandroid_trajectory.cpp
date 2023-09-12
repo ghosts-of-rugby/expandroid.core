@@ -146,3 +146,72 @@ double TrapzSpeedTrajectory::calc_speed(
 std::chrono::nanoseconds TrapzSpeedTrajectory::get_duration() const {
   return duration_;
 }
+
+Eigen::Vector4d find_coefficients(double x0, double xT, double T) {
+  if (T <= 0) {
+    throw std::invalid_argument("T must be positive");
+  }
+
+  Eigen::Matrix4d A;
+  Eigen::Vector4d b;
+
+  // Fill the matrix A
+  A << 1, 0, 0, 0,             // f(0) = x0
+      1, T, T * T, T * T * T,  // f(T) = xT
+      0, 1, 0, 0,              // f'(0) = 0
+      0, 1, 2 * T, 3 * T * T;  // f'(T) = 0
+
+  // Fill the vector b
+  b << x0, xT, 0, 0;
+
+  // Solve the system of equations to find the coefficients
+  Eigen::Vector4d coefficients = A.colPivHouseholderQr().solve(b);
+
+  return coefficients;
+}
+
+CubicTrajectory::CubicTrajectory(const double start_pos, const double goal_pos,
+                                 const double speed_max,
+                                 const double acceleration_max)
+    : start_pos_(start_pos),
+      goal_pos_(goal_pos),
+      speed_max_(speed_max),
+      acceleration_max_(acceleration_max) {
+  // Calculate durations
+  for (double t = 0.01; t < 10.0; t += 0.01) {
+    Eigen::Vector4d coefficients = find_coefficients(start_pos_, goal_pos_, t);
+    double speed = coefficients(1) + 2 * coefficients(2) * (t / 2.0) +
+                   3 * coefficients(3) * (t / 2.0) * (t / 2.0);
+    double acceleration = 2 * coefficients(2);
+    if (std::abs(speed) < speed_max_ &&
+        std::abs(acceleration) < acceleration_max_) {
+      duration_ = std::chrono::duration_cast<std::chrono::nanoseconds>(
+          std::chrono::duration<double>(t));
+      coefficients_ = coefficients;
+      return;
+    }
+  }
+}
+
+double CubicTrajectory::calc_angle(const std::chrono::nanoseconds& time) const {
+  if (time >= duration_) {
+    return goal_pos_;
+  }
+  double time_sec = static_cast<double>(time.count()) / 1e9;
+  return coefficients_(0) + coefficients_(1) * time_sec +
+         coefficients_(2) * time_sec * time_sec +
+         coefficients_(3) * time_sec * time_sec * time_sec;
+}
+
+double CubicTrajectory::calc_speed(const std::chrono::nanoseconds& time) const {
+  if (time >= duration_) {
+    return 0.0;
+  }
+  double time_sec = static_cast<double>(time.count()) / 1e9;
+  return coefficients_(1) + 2 * coefficients_(2) * time_sec +
+         3 * coefficients_(3) * time_sec * time_sec;
+}
+
+std::chrono::nanoseconds CubicTrajectory::get_duration() const {
+  return duration_;
+}

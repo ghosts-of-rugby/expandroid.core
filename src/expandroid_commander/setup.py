@@ -15,6 +15,7 @@ setup(
             os.path.join("share", package_name, "launch"),
             glob(os.path.join("launch", "*launch.[pxy][yma]*")),
         ),
+        (os.path.join("share", package_name, "config"), ["config/field.json"]),
     ],
     install_requires=["setuptools"],
     zip_safe=True,
@@ -26,7 +27,7 @@ setup(
     entry_points={
         "console_scripts": [
             "expandroid_commander = expandroid_commander.expandroid_commander:main",
-            "extend_joystick = expandroid_commander.extend_joystick:main",
+            "joystick_and_app = expandroid_commander.joystick_and_app:main",
         ],
     },
 )

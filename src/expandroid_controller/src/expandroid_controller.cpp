@@ -121,39 +121,54 @@ void ExpandroidControlNode::execute_trajectory_tracking(
   rclcpp::Rate loop_rate(20ms);
 
   const auto goal = goal_handle->get_goal();
-
-  // Create trajectory
-  auto [hand_angle, x_angle, y_angle, z_angle] = get_angles(expandroid_state_);
-  auto [hand_ref_angle, x_ref_angle, y_ref_angle, z_ref_angle] =
-      get_commands(goal->reference_angle);
-
-  ConstantSpeedTrajectory hand_trajectory(hand_angle, hand_ref_angle, 0.2);
-  // ConstantSpeedTrajectory x_trajectory(x_angle, x_ref_angle, 0.3);
-  TrapzSpeedTrajectory x_trajectory(x_angle, x_ref_angle, 0.5, 0.3);
-  ConstantSpeedTrajectory y_trajectory(y_angle, y_ref_angle, 0.3);
-  ConstantSpeedTrajectory z_trajectory(z_angle, z_ref_angle, 0.1);
-
-  TotalTrajectory trajectory(&hand_trajectory, &x_trajectory, &y_trajectory,
-                             &z_trajectory);
-
-  auto duration = trajectory.get_duration();
-
-  RCLCPP_INFO(this->get_logger(), "Duration: %f[s]", duration.count() / 1e9);
-
-  // auto feedback = std::make_shared<TrajectoryTracking::Feedback>();
   auto result = std::make_shared<TrajectoryTracking::Result>();
 
-  for (auto t = 0ns; t < duration; t += loop_rate.period()) {
-    if (goal_handle->is_canceling()) {
-      result->goal_state = expandroid_state_;
-      goal_handle->canceled(result);
-      RCLCPP_INFO(this->get_logger(), "Goal canceled");
-      return;
+  auto ref_angles = get_commands(goal->reference_angles);
+  for (auto& [hand_ref_angle, x_ref_angle, y_ref_angle, z_ref_angle] :
+       ref_angles) {  // Create trajectory
+    auto [hand_angle, x_angle, y_angle, z_angle] =
+        get_angles(expandroid_state_);
+
+    // logging current state
+    RCLCPP_INFO(this->get_logger(), "Current state:");
+    RCLCPP_INFO(this->get_logger(), "  hand_angle: %f[rad]", hand_angle);
+    RCLCPP_INFO(this->get_logger(), "  x_angle: %f[rad]", x_angle);
+    RCLCPP_INFO(this->get_logger(), "  y_angle: %f[rad]", y_angle);
+    RCLCPP_INFO(this->get_logger(), "  z_angle: %f[rad]", z_angle);
+
+    // logging reference state
+    RCLCPP_INFO(this->get_logger(), "Reference state:");
+    RCLCPP_INFO(this->get_logger(), "  hand_angle: %f[rad]", hand_ref_angle);
+    RCLCPP_INFO(this->get_logger(), "  x_angle: %f[rad]", x_ref_angle);
+    RCLCPP_INFO(this->get_logger(), "  y_angle: %f[rad]", y_ref_angle);
+    RCLCPP_INFO(this->get_logger(), "  z_angle: %f[rad]", z_ref_angle);
+
+    ConstantSpeedTrajectory hand_trajectory(hand_angle, hand_ref_angle, 0.2);
+    CubicTrajectory x_trajectory(x_angle, x_ref_angle, 0.5, 2.0);
+    CubicTrajectory y_trajectory(y_angle, y_ref_angle, 0.5, 2.0);
+    ConstantSpeedTrajectory z_trajectory(z_angle, z_ref_angle, 0.1);
+
+    TotalTrajectory trajectory(&hand_trajectory, &x_trajectory, &y_trajectory,
+                               &z_trajectory);
+
+    auto duration = trajectory.get_duration();
+
+    RCLCPP_INFO(this->get_logger(), "Duration: %f[s]", duration.count() / 1e9);
+
+    // auto feedback = std::make_shared<TrajectoryTracking::Feedback>();
+
+    for (auto t = 0ns; t < duration; t += loop_rate.period()) {
+      if (goal_handle->is_canceling()) {
+        result->goal_state = expandroid_state_;
+        goal_handle->canceled(result);
+        RCLCPP_INFO(this->get_logger(), "Goal canceled");
+        return;
+      }
+
+      send_state_command(trajectory.calc_command_state(t));
+
+      loop_rate.sleep();
     }
-
-    send_state_command(trajectory.calc_command_state(t));
-
-    loop_rate.sleep();
   }
 
   if (rclcpp::ok()) {
@@ -192,6 +207,13 @@ ExpandroidControlNode::get_expandroid_state() {
   msg.x_current = message_json[1]["cur"].get<int>() /
                   expandroid_parameter_.c620_current_value_per_ampere;
 
+  msg.y_angle = static_cast<double>(message_json[2]["ang"].get<int>()) /
+                expandroid_parameter_.y_motor_angle_per_user_angle;
+  msg.y_speed = static_cast<double>(message_json[2]["spd"].get<int>()) /
+                expandroid_parameter_.y_motor_speed_per_user_speed;
+  msg.y_current = message_json[2]["cur"].get<int>() /
+                  expandroid_parameter_.c620_current_value_per_ampere;
+
   return msg;
 }
 
@@ -216,7 +238,21 @@ void ExpandroidControlNode::send_speed_command(
        static_cast<int>(x_speed *
                         expandroid_parameter_.x_motor_speed_per_user_speed)},
   });
+  command_json.push_back({
+      {"id", 3},
+      {"name", "ref_spd"},
+      {"value",
+       static_cast<int>(y_speed *
+                        expandroid_parameter_.y_motor_speed_per_user_speed)},
+  });
   std::string command_string = command_json.dump();
+
+  if (command_string.length() > 256) {
+    RCLCPP_ERROR(rclcpp::get_logger("ExpandroidControlNode"),
+                 "Command string is too long.");
+    return;
+  }
+
   socket_->send_to(boost::asio::buffer(command_string),
                    motor_controller_endpoint_);
 }
@@ -251,7 +287,25 @@ void ExpandroidControlNode::send_state_command(
                             expandroid_parameter_.x_motor_speed_per_user_speed),
        }},
   });
+  command_json.push_back({
+      {"id", 3},
+      {"name", "ref_state"},
+      {"value",
+       {
+           static_cast<int>(y_angle *
+                            expandroid_parameter_.y_motor_angle_per_user_angle),
+           static_cast<int>(y_speed *
+                            expandroid_parameter_.y_motor_speed_per_user_speed),
+       }},
+  });
   std::string command_string = command_json.dump();
+
+  if (command_string.length() > 256) {
+    RCLCPP_ERROR(rclcpp::get_logger("ExpandroidControlNode"),
+                 "Command string is too long.");
+    return;
+  }
+
   socket_->send_to(boost::asio::buffer(command_string),
                    motor_controller_endpoint_);
 }

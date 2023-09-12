@@ -1,10 +1,12 @@
+import socket
+
 import rclpy
 import rclpy.node
 from sensor_msgs.msg import Joy
-import socket
+from std_msgs.msg import String
 
+from expandroid_msgs.msg import JoyAndApp
 
-SERVER_IP = "192.168.212.160"
 SERVER_PORT = 13579
 
 
@@ -13,33 +15,43 @@ class ExtendJoystickNode(rclpy.node.Node):
         super().__init__("expandroid_commander")
         # create android socket
         self._android_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self._android_socket.bind((SERVER_IP, SERVER_PORT))
+        self._android_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         self._android_socket.setblocking(False)
+        self._android_socket.bind(("", SERVER_PORT))
         self.get_logger().info("Android socket created")
 
         # subscribe joystick
         self.create_subscription(Joy, "joy", self.joy_callback, 10)
 
         # publish command
-        self.extended_joy_publisher = self.create_publisher(Joy, "extended_joy", 10)
+        self.joy_and_app_publisher = self.create_publisher(
+            JoyAndApp, "joy_and_app", 10
+        )
 
     def joy_callback(self, msg: Joy):
         additional_button = [0] * 16
-
+        pub_msg = JoyAndApp()
+        pub_msg.joy = msg
+        pub_msg.color = String(data="none")
+        pub_msg.button_num = -1
         try:
             # Try to receive data
             data, address = self._android_socket.recvfrom(
                 4096
             )  # This line may throw BlockingIOError
-            self.get_logger().info("Received data from Android: " + data.decode("utf-8"))
-            additional_button[int(data.decode("utf-8")) - 1] = 1
+            self.get_logger().info(
+                "Received data from Android: " + data.decode("utf-8")
+            )
+            color, button_num = data.decode("utf-8").split(",")
+            pub_msg.color = String(data=color)
+            pub_msg.button_num = int(button_num)
 
         except BlockingIOError:
             pass
 
         msg.buttons.extend(additional_button)
 
-        self.extended_joy_publisher.publish(msg)
+        self.joy_and_app_publisher.publish(pub_msg)
 
 
 def main():
@@ -47,3 +59,7 @@ def main():
     node = ExtendJoystickNode()
     rclpy.spin(node)
     rclpy.shutdown()
+
+
+if __name__ == "__main__":
+    main()

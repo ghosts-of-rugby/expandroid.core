@@ -13,6 +13,7 @@ find_package(rclcpp_components REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(nlohmann_json 3.2.0 REQUIRED)
 find_package(expandroid_msgs REQUIRED)
+find_package(Eigen3 REQUIRED)
 
 set(THIS_PACKAGE_INCLUDE_DEPENDS
   rclcpp
@@ -32,7 +33,8 @@ add_executable(expandroid_control_node src/expandroid_control_node.cpp)
 
 target_include_directories(expandroid_control_lib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
+  $<INSTALL_INTERFACE:include>
+  ${EIGEN3_INCLUDE_DIR})
 
 target_include_directories(expandroid_control_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

@@ -11,3 +11,6 @@ std::array<double, 4> get_speeds(const expandroid_msgs::msg::ExpandroidState);
 
 std::array<double, 4> get_commands(
     const expandroid_msgs::msg::ExpandroidCommand);
+
+std::vector<std::array<double, 4>> get_commands(
+    const std::vector<expandroid_msgs::msg::ExpandroidCommand> commands);
