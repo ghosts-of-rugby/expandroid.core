@@ -125,10 +125,10 @@ void ExpandroidControlNode::execute_trajectory_tracking(
 
   auto ref_angles = get_commands(goal->reference_angles);
 
-  auto move_z_to_zero_pos = get_angles(expandroid_state_);
-  move_z_to_zero_pos[3] = 0.0;
+  // auto move_z_to_zero_pos = get_angles(expandroid_state_);
+  // move_z_to_zero_pos[3] = 0.0;
 
-  ref_angles.insert(ref_angles.begin(), move_z_to_zero_pos);
+  // ref_angles.insert(ref_angles.begin(), move_z_to_zero_pos);
 
   for (auto& [hand_ref_angle, x_ref_angle, y_ref_angle, z_ref_angle] :
        ref_angles) {  // Create trajectory
@@ -149,10 +149,10 @@ void ExpandroidControlNode::execute_trajectory_tracking(
     RCLCPP_INFO(this->get_logger(), "  y_angle: %f[rad]", y_ref_angle);
     RCLCPP_INFO(this->get_logger(), "  z_angle: %f[rad]", z_ref_angle);
 
-    CubicTrajectory hand_trajectory(hand_angle, hand_ref_angle, 0.5, 2.0);
-    CubicTrajectory x_trajectory(x_angle, x_ref_angle, 0.5, 2.0);
+    CubicTrajectory hand_trajectory(hand_angle, hand_ref_angle, 0.8, 3.0);
+    CubicTrajectory x_trajectory(x_angle, x_ref_angle, 0.8, 3.0);
     CubicTrajectory y_trajectory(y_angle, y_ref_angle, 0.5, 2.0);
-    CubicTrajectory z_trajectory(z_angle, z_ref_angle, 0.5, 2.0);
+    CubicTrajectory z_trajectory(z_angle, z_ref_angle, 1.2, 5.0);
 
     TotalTrajectory trajectory(&hand_trajectory, &x_trajectory, &y_trajectory,
                                &z_trajectory);

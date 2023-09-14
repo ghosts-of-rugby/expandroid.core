@@ -5,15 +5,15 @@ from expandroid_msgs.msg import ExpandroidCommand, ExpandroidState
 
 def get_speed_command(joy_msg: Joy, expandroid_command: ExpandroidCommand):
     if joy_msg.buttons[4]:  # A button
-        expandroid_command.hand_command = 0.3
+        expandroid_command.hand_command = 0.4
     elif joy_msg.buttons[5]:  # B button
-        expandroid_command.hand_command = -0.3
+        expandroid_command.hand_command = -0.4
     else:
         expandroid_command.hand_command = 0.0
 
     expandroid_command.x_command = joy_msg.axes[0] * 0.3
     expandroid_command.y_command = joy_msg.axes[1] * 0.3
-    expandroid_command.z_command = joy_msg.axes[4] * 0.3
+    expandroid_command.z_command = joy_msg.axes[4] * 0.7
 
     return expandroid_command
 

@@ -1,5 +1,6 @@
 import json
 from enum import Enum
+import time
 
 import rclpy
 import rclpy.node
@@ -44,6 +45,9 @@ class ExpandroidMainNode(rclpy.node.Node):
         )
         self._command_mode = CommandMode.BEFORE_START
 
+        # publish joy_and_app to control hand
+        self.joy_and_app_publisher = self.create_publisher(JoyAndApp, "joy_and_app", 10)
+
         self._trajectory_tracking_action_client = ActionClient(
             self, TrajectoryTracking, "trajectory_tracking"
         )
@@ -51,6 +55,7 @@ class ExpandroidMainNode(rclpy.node.Node):
         self.timer = self.create_timer(0.1, self.commander_callback)
 
     def joy_callback(self, msg: JoyAndApp):
+        self._recieved_msg = msg
         joy_msg = msg.joy
         if self._command_mode == CommandMode.BEFORE_START:
             self._command_mode = CommandMode.SPEED_CTRL
@@ -67,6 +72,12 @@ class ExpandroidMainNode(rclpy.node.Node):
             if msg.type.data == "pos":
                 self._command_mode = CommandMode.TRAJECTORY_TRACKING
                 self.get_logger().info("Start trajectory tracking")
+
+                self._current_color = msg.color.data
+                self._open_after_reaching: bool = self._field_config[
+                    self._current_color
+                ][str(msg.value)]["open_after_reaching"]
+
                 goal_msg = self.get_goal_msg(msg.color.data, msg.value)
                 self._trajectory_tracking_action_client.wait_for_server()
                 future = self._trajectory_tracking_action_client.send_goal_async(
@@ -97,11 +108,39 @@ class ExpandroidMainNode(rclpy.node.Node):
     def trajectory_tracing_get_result_callback(self, future):
         # result = future.result().result
         self.get_logger().info("Goal result received")
+
+        if self._open_after_reaching:
+            self._recieved_msg.color.data = self._current_color
+            self._recieved_msg.type.data = "hand"
+            self._recieved_msg.value = 0
+            self.joy_and_app_publisher.publish(self._recieved_msg)
+
+        time.sleep(0.1)
         self._command_mode = CommandMode.SPEED_CTRL
         self.get_logger().info("Start speed control")
 
     def get_goal_msg(self, color: str, button_num: int):
         goal_msg = TrajectoryTracking.Goal()
+
+        goal_msg.reference_angles.append(
+            ExpandroidCommand(
+                hand_command=self._current_state.hand_angle,
+                x_command=self._current_state.x_angle,
+                y_command=self._current_state.y_angle,
+                z_command=0.0,
+            )
+        )
+
+        if self._current_state.y_angle > 0.92:
+            goal_msg.reference_angles.append(
+                ExpandroidCommand(
+                    hand_command=0.0,
+                    x_command=self._current_state.x_angle,
+                    y_command=self._current_state.y_angle,
+                    z_command=0.0,
+                )
+            )
+
         for ref_pos in self._field_config[color][str(button_num)]["pos"]:
             goal_msg.reference_angles.append(
                 ExpandroidCommand(
