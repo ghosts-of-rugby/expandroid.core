@@ -124,6 +124,12 @@ void ExpandroidControlNode::execute_trajectory_tracking(
   auto result = std::make_shared<TrajectoryTracking::Result>();
 
   auto ref_angles = get_commands(goal->reference_angles);
+
+  auto move_z_to_zero_pos = get_angles(expandroid_state_);
+  move_z_to_zero_pos[3] = 0.0;
+
+  ref_angles.insert(ref_angles.begin(), move_z_to_zero_pos);
+
   for (auto& [hand_ref_angle, x_ref_angle, y_ref_angle, z_ref_angle] :
        ref_angles) {  // Create trajectory
     auto [hand_angle, x_angle, y_angle, z_angle] =
@@ -143,10 +149,10 @@ void ExpandroidControlNode::execute_trajectory_tracking(
     RCLCPP_INFO(this->get_logger(), "  y_angle: %f[rad]", y_ref_angle);
     RCLCPP_INFO(this->get_logger(), "  z_angle: %f[rad]", z_ref_angle);
 
-    ConstantSpeedTrajectory hand_trajectory(hand_angle, hand_ref_angle, 0.2);
+    CubicTrajectory hand_trajectory(hand_angle, hand_ref_angle, 0.5, 2.0);
     CubicTrajectory x_trajectory(x_angle, x_ref_angle, 0.5, 2.0);
     CubicTrajectory y_trajectory(y_angle, y_ref_angle, 0.5, 2.0);
-    ConstantSpeedTrajectory z_trajectory(z_angle, z_ref_angle, 0.1);
+    CubicTrajectory z_trajectory(z_angle, z_ref_angle, 0.5, 2.0);
 
     TotalTrajectory trajectory(&hand_trajectory, &x_trajectory, &y_trajectory,
                                &z_trajectory);
@@ -214,6 +220,13 @@ ExpandroidControlNode::get_expandroid_state() {
   msg.y_current = message_json[2]["cur"].get<int>() /
                   expandroid_parameter_.c620_current_value_per_ampere;
 
+  msg.z_angle = static_cast<double>(message_json[3]["ang"].get<int>()) /
+                expandroid_parameter_.z_motor_angle_per_user_angle;
+  msg.z_speed = static_cast<double>(message_json[3]["spd"].get<int>()) /
+                expandroid_parameter_.z_motor_speed_per_user_speed;
+  msg.z_current = message_json[3]["cur"].get<int>() /
+                  expandroid_parameter_.c610_current_value_per_ampere;
+
   return msg;
 }
 
@@ -244,6 +257,13 @@ void ExpandroidControlNode::send_speed_command(
       {"value",
        static_cast<int>(y_speed *
                         expandroid_parameter_.y_motor_speed_per_user_speed)},
+  });
+  command_json.push_back({
+      {"id", 4},
+      {"name", "ref_spd"},
+      {"value",
+       static_cast<int>(z_speed *
+                        expandroid_parameter_.z_motor_speed_per_user_speed)},
   });
   std::string command_string = command_json.dump();
 
@@ -296,6 +316,17 @@ void ExpandroidControlNode::send_state_command(
                             expandroid_parameter_.y_motor_angle_per_user_angle),
            static_cast<int>(y_speed *
                             expandroid_parameter_.y_motor_speed_per_user_speed),
+       }},
+  });
+  command_json.push_back({
+      {"id", 4},
+      {"name", "ref_state"},
+      {"value",
+       {
+           static_cast<int>(z_angle *
+                            expandroid_parameter_.z_motor_angle_per_user_angle),
+           static_cast<int>(z_speed *
+                            expandroid_parameter_.z_motor_speed_per_user_speed),
        }},
   });
   std::string command_string = command_json.dump();

@@ -17,10 +17,18 @@ tasks:
     cmds:
       - rm -rf build install log
 
-  launch_controller:
+  controller:
     cmds:
-      - ros2 launch expandroid_controller expandroid_control_node.launch.py
-  
-  launch_commander:
+      - ros2 launch expandroid_bringup expandroid_control_node.launch.py
+
+  commander:
     cmds:
-      - ros2 launch expandroid_commander expandroid_commander.launch.py
+      - ros2 launch expandroid_bringup expandroid_commander.launch.py
+
+  parameter_setup:
+    cmds:
+      - ros2 launch expandroid_bringup expandroid_parameter_setup.launch.py
+
+  hand:
+    cmds:
+      - ros2 launch expandroid_bringup expandroid_hand.launch.py

@@ -2,6 +2,8 @@ from launch import LaunchDescription
 
 from launch_ros.actions import Node
 
+from ament_index_python import get_package_share_directory
+
 
 def generate_launch_description():
     return LaunchDescription(
@@ -19,9 +21,17 @@ def generate_launch_description():
                 output="screen",
             ),
             Node(
-                package="expandroid_commander",
-                executable="expandroid_commander",
-                name="expandroid_commander",
+                package="expandroid_hand",
+                executable="expandroid_hand",
+                name="expandroid_hand",
+                parameters=[
+                    {
+                        "path_to_field_config": get_package_share_directory(
+                            "expandroid_bringup"
+                        )
+                        + "/config/field.json"
+                    }
+                ],
                 output="screen",
             ),
         ]

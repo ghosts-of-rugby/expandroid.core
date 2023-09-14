@@ -32,6 +32,10 @@ struct ExpandroidParameter {
   const double y_motor_angle_per_user_angle = 285000.0;
   const double y_motor_speed_per_user_speed =
       1280.0 / 175560 * y_motor_angle_per_user_angle;
+
+  const double z_motor_angle_per_user_angle = 1190000.0;
+  const double z_motor_speed_per_user_speed =
+      8468.0 / 1168707 * z_motor_angle_per_user_angle;
 };
 
 enum class ControlMode { SPEED_CTRL, TRAJECTORY_TRACKING };

@@ -24,16 +24,15 @@ class ExtendJoystickNode(rclpy.node.Node):
         self.create_subscription(Joy, "joy", self.joy_callback, 10)
 
         # publish command
-        self.joy_and_app_publisher = self.create_publisher(
-            JoyAndApp, "joy_and_app", 10
-        )
+        self.joy_and_app_publisher = self.create_publisher(JoyAndApp, "joy_and_app", 10)
 
     def joy_callback(self, msg: Joy):
         additional_button = [0] * 16
         pub_msg = JoyAndApp()
         pub_msg.joy = msg
         pub_msg.color = String(data="none")
-        pub_msg.button_num = -1
+        pub_msg.type = String(data="none")
+        pub_msg.value = -1
         try:
             # Try to receive data
             data, address = self._android_socket.recvfrom(
@@ -42,9 +41,10 @@ class ExtendJoystickNode(rclpy.node.Node):
             self.get_logger().info(
                 "Received data from Android: " + data.decode("utf-8")
             )
-            color, button_num = data.decode("utf-8").split(",")
+            color, command_type, val = data.decode("utf-8").split(",")
             pub_msg.color = String(data=color)
-            pub_msg.button_num = int(button_num)
+            pub_msg.type = String(data=command_type)
+            pub_msg.value = int(val)
 
         except BlockingIOError:
             pass
