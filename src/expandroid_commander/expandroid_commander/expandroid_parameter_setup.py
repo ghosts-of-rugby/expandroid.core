@@ -54,6 +54,7 @@ class ExpandroidParameterSetup(rclpy.node.Node):
             json.dump(
                 self._field_config,
                 open(self._path_to_field_config, "w"),
+                indent=2,
             )
 
         self._speed_command = get_speed_command(joy_msg, self._speed_command)
