@@ -15,6 +15,14 @@ ExpandroidControlNode::ExpandroidControlNode()
 
   control_mode_ = ControlMode::SPEED_CTRL;
 
+  // get parameters
+  auto inverse_y_axis = this->declare_parameter<bool>("inverse_y_axis", false);
+  if (inverse_y_axis) {
+    expandroid_parameter_.y_motor_angle_per_user_angle *= -1.0;
+    expandroid_parameter_.y_motor_speed_per_user_speed *= -1.0;
+    RCLCPP_INFO(rclcpp::get_logger("ExpandroidControlNode"), "Inverse y axis.");
+  }
+
   expandroid_state_publisher_ =
       this->create_publisher<expandroid_msgs::msg::ExpandroidState>(
           "expandroid_state", 1);

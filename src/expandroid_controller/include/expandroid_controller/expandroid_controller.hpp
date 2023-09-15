@@ -16,25 +16,25 @@ using boost::asio::ip::udp;
 using json = nlohmann::json;
 
 struct ExpandroidParameter {
-  const double c610_current_value_per_ampere = 1000.0;
-  const double c620_current_value_per_ampere = 16384.0 / 20.0;
+  double c610_current_value_per_ampere = 1000.0;
+  double c620_current_value_per_ampere = 16384.0 / 20.0;
 
-  const double hand_motor_angle_per_user_angle = 850000.0;
-  const double hand_motor_speed_per_user_speed =
+  double hand_motor_angle_per_user_angle = 850000.0;
+  double hand_motor_speed_per_user_speed =
       4000.0 / 530000 *
       hand_motor_angle_per_user_angle;  // integrated_rpm / measured_angle *
                                         // user_angle
 
-  const double x_motor_angle_per_user_angle = 700000.0;
-  const double x_motor_speed_per_user_speed =
+  double x_motor_angle_per_user_angle = 700000.0;
+  double x_motor_speed_per_user_speed =
       3900.0 / 536000 * x_motor_angle_per_user_angle;
 
-  const double y_motor_angle_per_user_angle = 285000.0;
-  const double y_motor_speed_per_user_speed =
+  double y_motor_angle_per_user_angle = 285000.0;
+  double y_motor_speed_per_user_speed =
       1280.0 / 175560 * y_motor_angle_per_user_angle;
 
-  const double z_motor_angle_per_user_angle = 1190000.0;
-  const double z_motor_speed_per_user_speed =
+  double z_motor_angle_per_user_angle = 1190000.0;
+  double z_motor_speed_per_user_speed =
       8468.0 / 1168707 * z_motor_angle_per_user_angle;
 };
 

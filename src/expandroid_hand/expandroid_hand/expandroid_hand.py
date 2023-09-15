@@ -1,7 +1,7 @@
 from rclpy.node import Node
 import rclpy
 from expandroid_msgs.msg import JoyAndApp
-from expandroid_msgs.msg import ExpandroidState
+from expandroid_msgs.msg import ExpandroidState, ExpandroidHandCommand
 import json
 import serial
 from typing import Optional, List
@@ -23,6 +23,10 @@ class ExpandroidHandNode(Node):
         self.create_subscription(
             ExpandroidState, "expandroid_state", self.state_callback, 10
         )
+        # subscribe hand_command
+        self.create_subscription(
+            ExpandroidHandCommand, "expandroid_hand_command", self.hand_command_callback, 10
+        )
 
         # open field config
         self._path_to_field_config = self.declare_parameter(
@@ -34,6 +38,27 @@ class ExpandroidHandNode(Node):
         time.sleep(2)
 
         self.send_hand_command([1 for _ in range(6)])  # close hand
+
+    def hand_command_callback(self, msg: ExpandroidHandCommand):
+        self.get_logger().info("hand_command: {}".format(msg))
+        if msg.value == 0:  # open
+            if hasattr(self, "_current_state"):
+                hand_command = self.get_hand_open_command_from_state(
+                    msg.color.data, self._current_state
+                )
+            else:
+                self.get_logger().error("current_state is not defined")
+
+        elif msg.value == 1:  # close
+            hand_command = [1 for _ in range(6)]
+
+        elif msg.value == 2:  # open all
+            hand_command = [0 for _ in range(6)]
+
+        elif msg.value == 3:  # middle
+            hand_command = [0.5 for _ in range(6)]
+        self.get_logger().info("hand_command: {}".format(hand_command))
+        self.send_hand_command(hand_command)
 
     def joy_callback(self, msg: JoyAndApp):
         if msg.type.data == "hand":

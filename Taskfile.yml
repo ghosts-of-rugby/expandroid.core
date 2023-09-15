@@ -17,9 +17,13 @@ tasks:
     cmds:
       - rm -rf build install log
 
-  controller:
+  controller_blue:
     cmds:
       - ros2 launch expandroid_bringup expandroid_control_node.launch.py
+
+  controller_red:
+    cmds:
+      - ros2 launch expandroid_bringup expandroid_control_node.launch.py inverse_y_axis:=true
 
   commander:
     cmds:

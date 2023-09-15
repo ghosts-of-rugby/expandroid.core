@@ -12,6 +12,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/ExpandroidState.msg"
   "msg/ExpandroidCommand.msg"
   "msg/JoyAndApp.msg"
+  "msg/ExpandroidHandCommand.msg"
   "action/TrajectoryTracking.action"
   DEPENDENCIES std_msgs sensor_msgs
 )

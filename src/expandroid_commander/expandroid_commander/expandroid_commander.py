@@ -11,7 +11,12 @@ from rclpy.action.client import ClientGoalHandle
 from rclpy.task import Future
 
 from expandroid_msgs.action import TrajectoryTracking
-from expandroid_msgs.msg import ExpandroidCommand, JoyAndApp, ExpandroidState
+from expandroid_msgs.msg import (
+    ExpandroidCommand,
+    JoyAndApp,
+    ExpandroidState,
+    ExpandroidHandCommand,
+)
 from expandroid_commander.get_speed_command import (
     get_speed_command,
     modify_speed_command,
@@ -45,8 +50,10 @@ class ExpandroidMainNode(rclpy.node.Node):
         )
         self._command_mode = CommandMode.BEFORE_START
 
-        # publish joy_and_app to control hand
-        self.joy_and_app_publisher = self.create_publisher(JoyAndApp, "joy_and_app", 10)
+        # publish hand command
+        self.hand_command_publisher = self.create_publisher(
+            ExpandroidHandCommand, "expandroid_hand_command", 10
+        )
 
         self._trajectory_tracking_action_client = ActionClient(
             self, TrajectoryTracking, "trajectory_tracking"
@@ -77,6 +84,14 @@ class ExpandroidMainNode(rclpy.node.Node):
                 self._open_after_reaching: bool = self._field_config[
                     self._current_color
                 ][str(msg.value)]["open_after_reaching"]
+
+                # close hand before moving if y > 0
+                if self._current_state.y_angle > 0.0:
+                    hand_command = ExpandroidHandCommand()
+                    hand_command.value = 1
+                    hand_command.color.data = self._current_color
+                    self.hand_command_publisher.publish(hand_command)
+                    time.sleep(0.1)
 
                 goal_msg = self.get_goal_msg(msg.color.data, msg.value)
                 self._trajectory_tracking_action_client.wait_for_server()
@@ -110,10 +125,10 @@ class ExpandroidMainNode(rclpy.node.Node):
         self.get_logger().info("Goal result received")
 
         if self._open_after_reaching:
-            self._recieved_msg.color.data = self._current_color
-            self._recieved_msg.type.data = "hand"
-            self._recieved_msg.value = 0
-            self.joy_and_app_publisher.publish(self._recieved_msg)
+            hand_command = ExpandroidHandCommand()
+            hand_command.value = 0
+            hand_command.color.data = self._current_color
+            self.hand_command_publisher.publish(hand_command)
 
         time.sleep(0.1)
         self._command_mode = CommandMode.SPEED_CTRL
