@@ -22,6 +22,8 @@ from expandroid_commander.get_speed_command import (
     modify_speed_command,
 )
 
+from ament_index_python import get_package_share_directory
+
 
 class CommandMode(Enum):
     BEFORE_START = -1
@@ -33,7 +35,11 @@ class ExpandroidMainNode(rclpy.node.Node):
     def __init__(self):
         super().__init__("expandroid_commander")
 
-        path_to_field_config = self.declare_parameter("path_to_field_config").value
+        path_to_field_config = self.declare_parameter(
+            "path_to_field_config",
+            value=get_package_share_directory("expandroid_bringup")
+            + "/config/field.json",
+        ).value
 
         self._field_config = json.load(open(path_to_field_config, "r"))
 

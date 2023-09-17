@@ -36,3 +36,15 @@ tasks:
   hand:
     cmds:
       - ros2 launch expandroid_bringup expandroid_hand.launch.py
+
+  red:
+    cmds:
+      - ros2 launch expandroid_bringup expandroid.launch.py inverse_y_axis:=true
+
+  blue:
+    cmds:
+      - ros2 launch expandroid_bringup expandroid.launch.py inverse_y_axis:=false
+
+  check_server:
+    cmds:
+      - python3 /home/hisaki/workspace/catch-robo/expandroid.ros2/src/expandroid_commander/scripts/controller_server.py

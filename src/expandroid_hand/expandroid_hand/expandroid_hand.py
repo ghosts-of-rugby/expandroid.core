@@ -11,7 +11,7 @@ import time
 
 OPEN = [135, 45, 135, 45, 135, 45]
 
-CLOSE = [10, 150, 10, 150, 10, 150]
+CLOSE = [0, 160, 0, 160, 0, 160]
 
 
 class ExpandroidHandNode(Node):
@@ -25,7 +25,10 @@ class ExpandroidHandNode(Node):
         )
         # subscribe hand_command
         self.create_subscription(
-            ExpandroidHandCommand, "expandroid_hand_command", self.hand_command_callback, 10
+            ExpandroidHandCommand,
+            "expandroid_hand_command",
+            self.hand_command_callback,
+            10,
         )
 
         # open field config
