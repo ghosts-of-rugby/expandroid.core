@@ -157,9 +157,21 @@ void ExpandroidControlNode::execute_trajectory_tracking(
     RCLCPP_INFO(this->get_logger(), "  y_angle: %f[rad]", y_ref_angle);
     RCLCPP_INFO(this->get_logger(), "  z_angle: %f[rad]", z_ref_angle);
 
+    double y_speed_scale = 1.0;
+    if (y_ref_angle < 0.9 && expandroid_state_.y_angle < 0.9) {
+      // logging
+      RCLCPP_INFO(this->get_logger(), "y_speed_scale: %f", y_speed_scale);
+      y_speed_scale = 1.8;
+    } else {
+      // logging
+      RCLCPP_INFO(this->get_logger(), "y_speed_scale: %f", y_speed_scale);
+      y_speed_scale = 1.0;
+    }
+
     CubicTrajectory hand_trajectory(hand_angle, hand_ref_angle, 0.8, 3.0);
     CubicTrajectory x_trajectory(x_angle, x_ref_angle, 0.8, 3.0);
-    CubicTrajectory y_trajectory(y_angle, y_ref_angle, 0.5, 2.0);
+    CubicTrajectory y_trajectory(y_angle, y_ref_angle, 0.5 * y_speed_scale,
+                                 2.0 * y_speed_scale);
     CubicTrajectory z_trajectory(z_angle, z_ref_angle, 1.2, 5.0);
 
     TotalTrajectory trajectory(&hand_trajectory, &x_trajectory, &y_trajectory,
