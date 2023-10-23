@@ -27,7 +27,6 @@ class ExtendJoystickNode(rclpy.node.Node):
         self.joy_and_app_publisher = self.create_publisher(JoyAndApp, "joy_and_app", 10)
 
     def joy_callback(self, msg: Joy):
-        additional_button = [0] * 16
         pub_msg = JoyAndApp()
         pub_msg.joy = msg
         pub_msg.color = String(data="none")
@@ -48,8 +47,6 @@ class ExtendJoystickNode(rclpy.node.Node):
 
         except BlockingIOError:
             pass
-
-        msg.buttons.extend(additional_button)
 
         self.joy_and_app_publisher.publish(pub_msg)
 
